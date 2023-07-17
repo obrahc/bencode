@@ -34,12 +34,12 @@ func TestDecodeString(t *testing.T) {
 
 func TestDecodeStringInt(t *testing.T) {
 	type test struct {
-		TestString string `bencode:"teststring"`
-		TestInt uint64 `bencode:"testint"`
+		Foo string `bencode:"foo"`
+		Bar uint64 `bencode:"bar"`
 	}
 	have := &test{}
 	want := &test{"test", 1234567890}
-	input := []byte("d7:testinti1234567890e10:teststring4:teste")
+	input := []byte("d3:bari1234567890e3:foo4:teste")
 	Decode(input, have)
 	if !reflect.DeepEqual(have, want) {
 		t.Errorf("Struct not properly hidrated: wanted %v but have %v", want, have)
