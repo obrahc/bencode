@@ -1,207 +1,10 @@
 package bencode
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"reflect"
 	"strconv"
 )
-
-type reader struct {
-	*bytes.Reader
-}
-
-func newReader(data []byte) *reader {
-	return &reader{bytes.NewReader(data)}
-}
-
-func (r *reader) ReadUntil(c byte) ([]byte, error) {
-	res := []byte("")
-	for {
-		b, err := r.ReadByte()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-
-			return []byte{}, err
-		}
-		if b == c {
-			break
-		}
-		res = append(res, b)
-	}
-	return res, nil
-}
-
-func (r *reader) readNBytes(n uint64) ([]byte, error) {
-	res := []byte("")
-	var i uint64
-	for i = 0; i < n; i++ {
-		b, err := r.ReadByte()
-		if err != nil {
-			return []byte(""), err
-		}
-		res = append(res, b)
-	}
-	return res, nil
-}
-
-func (r * reader) readStringLength() (uint64, error) {
-	// Read the length of string
-	size, err := r.ReadUntil(':')
-	if err != nil {
-		return 0, err
-	}
-	res, err := strconv.ParseUint(string(size), 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return res, nil
-}
-
-func (r *reader) ReadString() (string, error) {
-	size, err := r.readStringLength()
-	if err != nil {
-		return "", err
-	}
-	b, err := r.readNBytes(size)
-	return string(b), err
-}
-
-func (r *reader) readInteger() (string, error) {
-	r.ReadByte()
-	value, err := r.ReadUntil('e')
-	if err != nil {
-		return "", err
-	}
-	return string(value), nil
-}
-
-func (r *reader) ReadList() ([]interface{}, error) {
-	res := make([]interface{}, 0)
-	r.ReadByte()
-	var v interface{}
-	for {
-		e, err := r.ReadByte() 
-		if err != nil {
-			return res, err
-		}
-		if e == 'e' {
-			break
-		}
-		r.UnreadByte() 
-		vt, err := r.getValueType()
-		if err != nil {
-			return res, err
-		}
-		switch vt {
-		case reflect.Uint64:
-			v, err = r.readInteger()
-			if err != nil {
-				return res, err
-			}
-		case reflect.String:
-			v, err = r.ReadString()
-			if err != nil {
-				return res, err
-			}
-		case reflect.Array:
-			v, err = r.ReadList()
-			if err != nil {
-				return res, err
-			}
-		case reflect.Map:
-			v, err = r.ReadDictionary()
-		}
-		res = append(res, v)
-	}
-	return res, nil
-}
-
-func (r *reader) ReadDictionary() (map[string]interface{}, error) {
-	res := make(map[string]interface{})
-	r.ReadByte()
-	var v interface{}
-	for {
-		s, _ := r.ReadString()
-		vt, err := r.getValueType()
-		if err != nil {
-			return res, err
-		}
-		switch vt {
-		case reflect.Uint64:
-			v, err = r.readInteger()
-			if err != nil {
-				return res, err
-			}
-		case reflect.String:
-			v, err = r.ReadString()
-			if err != nil {
-				return res, err
-			}
-		case reflect.Array:
-			v, err = r.ReadList()
-			if err != nil {
-				return res, err
-			}
-		case reflect.Map:
-			v, err = r.ReadDictionary()
-		}
-		res[s] = v
-		if err != nil {
-			return res, err
-		}
-		e, err := r.ReadByte() 
-		if err != nil {
-			return res, err
-		}
-		if e == 'e' {
-			break
-		}
-		r.UnreadByte() 
-	}
-	return res, nil
-}
-
-func (r *reader) getValueType() (reflect.Kind, error) {
-	b, err := r.ReadByte()
-	defer r.UnreadByte()
-	if err != nil {
-		return reflect.Invalid, err
-	}
-	switch b {
-	case 'i':
-		return reflect.Uint64, nil
-	case 'l':
-		return reflect.Array, nil
-	case 'd':
-		return reflect.Map, nil
-	default:
-		return reflect.String, nil
-	}
-}
-
-func (r *reader) readValue(vt reflect.Kind) (string, error) {
-	var res string	
-	switch vt {
-	case reflect.Uint64:
-		res, err := r.readInteger()
-		if err != nil {
-			return res, err
-		}
-		return res, nil
-	case reflect.String:
-		res, err := r.ReadString()
-		if err != nil {
-			return res, err
-		}
-		return res, nil
-	}
-	return res, nil
-}
 
 type decoder struct {
 	reader *reader 
@@ -261,8 +64,142 @@ func (d *decoder) setStruct(rv reflect.Value, values map[string]interface{}) err
 	return nil
 }
 
+func (d *decoder) readStringLength() (uint64, error) {
+	size, err := d.reader.readUntil(':')
+	if err != nil {
+		return 0, err
+	}
+	res, err := strconv.ParseUint(string(size), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return res, nil
+}
+
+func (d *decoder) readString() (string, error) {
+	size, err := d.readStringLength()
+	if err != nil {
+		return "", err
+	}
+	b, err := d.reader.readNBytes(size)
+	return string(b), err
+}
+
+func (d *decoder) readInteger() (string, error) {
+	d.reader.ReadByte()
+	value, err := d.reader.readUntil('e')
+	if err != nil {
+		return "", err
+	}
+	return string(value), nil
+}
+
+func (d *decoder) getValueType() (reflect.Kind, error) {
+	b, err := d.reader.ReadByte()
+	defer d.reader.UnreadByte()
+	if err != nil {
+		return reflect.Invalid, err
+	}
+	switch b {
+	case 'i':
+		return reflect.Uint64, nil
+	case 'l':
+		return reflect.Array, nil
+	case 'd':
+		return reflect.Map, nil
+	default:
+		return reflect.String, nil
+	}
+}
+
+func (d *decoder) readList() ([]interface{}, error) {
+	res := make([]interface{}, 0)
+	d.reader.ReadByte()
+	var v interface{}
+	for {
+		e, err := d.reader.ReadByte() 
+		if err != nil {
+			return res, err
+		}
+		if e == 'e' {
+			break
+		}
+		d.reader.UnreadByte() 
+		vt, err := d.getValueType()
+		if err != nil {
+			return res, err
+		}
+		switch vt {
+		case reflect.Uint64:
+			v, err = d.readInteger()
+			if err != nil {
+				return res, err
+			}
+		case reflect.String:
+			v, err = d.readString()
+			if err != nil {
+				return res, err
+			}
+		case reflect.Array:
+			v, err = d.readList()
+			if err != nil {
+				return res, err
+			}
+		case reflect.Map:
+			v, err = d.readDictionary()
+		}
+		res = append(res, v)
+	}
+	return res, nil
+}
+
+func (d *decoder) readDictionary() (map[string]interface{}, error) {
+	res := make(map[string]interface{})
+	d.reader.ReadByte()
+	var v interface{}
+	for {
+		s, _ := d.readString()
+		vt, err := d.getValueType()
+		if err != nil {
+			return res, err
+		}
+		switch vt {
+		case reflect.Uint64:
+			v, err = d.readInteger()
+			if err != nil {
+				return res, err
+			}
+		case reflect.String:
+			v, err = d.readString()
+			if err != nil {
+				return res, err
+			}
+		case reflect.Array:
+			v, err = d.readList()
+			if err != nil {
+				return res, err
+			}
+		case reflect.Map:
+			v, err = d.readDictionary()
+		}
+		res[s] = v
+		if err != nil {
+			return res, err
+		}
+		e, err := d.reader.ReadByte() 
+		if err != nil {
+			return res, err
+		}
+		if e == 'e' {
+			break
+		}
+		d.reader.UnreadByte() 
+	}
+	return res, nil
+}
+
 func (d *decoder) unmarshal(v any) error{
-	values, err := d.reader.ReadDictionary()
+	values, err := d.readDictionary()
 	if err != nil {
 		return err
 	}
@@ -270,7 +207,7 @@ func (d *decoder) unmarshal(v any) error{
 	return d.setStruct(rv, values)
 }
 
-func decode(input []byte, v any) {
+func Decode(input []byte, v any) {
 	var d decoder
 	d.init(input)
 	d.unmarshal(v)

@@ -69,7 +69,7 @@ func (e *encoder) marshal(v any) ([]byte, error) {
 	return e.output.Bytes(), nil
 }
 
-func encode(v any) ([]byte, error) {
+func Encode(v any) ([]byte, error) {
 	var e encoder
 	e.init()
 	return e.marshal(v)
