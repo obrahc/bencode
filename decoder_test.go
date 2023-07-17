@@ -56,10 +56,10 @@ func TestDecodeMockTorrentFile(t *testing.T) {
 		Announce string `bencode:"announce"`
 		Comment string `bencode:"comment"`
 		AnnounceList [][]string `bencode:"announce-list"`
-		Info *info `bencode:"info"`
+		Info info `bencode:"info"`
 	}
-	have := &test{Info: &info{}}
-	want := &test{"https://torrent.ubuntu.com/announce", "Ubuntu CD releases.ubuntu.com", [][]string{{"https://torrent.ubuntu.com/announce"}, {"https://ipv6.torrent.ubuntu.com/announce"}}, &info{4932407296, "ubuntu-23.04-desktop-amd64.iso", 262144}}
+	have := &test{}
+	want := &test{"https://torrent.ubuntu.com/announce", "Ubuntu CD releases.ubuntu.com", [][]string{{"https://torrent.ubuntu.com/announce"}, {"https://ipv6.torrent.ubuntu.com/announce"}}, info{4932407296, "ubuntu-23.04-desktop-amd64.iso", 262144}}
 	input := []byte("d8:announce35:https://torrent.ubuntu.com/announce13:announce-listll35:https://torrent.ubuntu.com/announceel40:https://ipv6.torrent.ubuntu.com/announceee7:comment29:Ubuntu CD releases.ubuntu.com10:created by13:mktorrent 1.113:creation datei1681992794e4:infod6:lengthi4932407296e4:name30:ubuntu-23.04-desktop-amd64.iso12:piece lengthi262144eee")
 	decode(input, have)
 	if !reflect.DeepEqual(have, want) {

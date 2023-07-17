@@ -223,7 +223,6 @@ func (d *decoder) setArray(rv reflect.Value, values []interface{}) error {
 			d.setArray(indirect.Index(k).Addr(), decodedValue)
 		}
 	}
-
 	return nil
 }
 
@@ -251,7 +250,9 @@ func (d *decoder) setStruct(rv reflect.Value, values map[string]interface{}) err
 					indirect.FieldByName(field.Name).SetString(decodedValue)
 				}
 			case map[string]interface{}:
-				d.setStruct(indirect.FieldByName(field.Name), decodedValue)
+				n := reflect.New(indirect.FieldByName(field.Name).Type())
+				indirect.FieldByName(field.Name).Set(reflect.Indirect(n))
+				d.setStruct(indirect.FieldByName(field.Name).Addr(), decodedValue)
 			case []interface{}:
 				d.setArray(indirect.FieldByName(field.Name).Addr(), decodedValue)
 			}
