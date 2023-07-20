@@ -207,10 +207,10 @@ func (d *decoder) unmarshal(v any) error{
 	return d.setStruct(rv, values)
 }
 
-func Decode(input []byte, v any) {
+func Decode(input []byte, v any) error {
 	var d decoder
 	d.init(input)
-	d.unmarshal(v)
+	return d.unmarshal(v)
 }
 
 func getStructFields(t reflect.Type) map[string]reflect.StructField {
