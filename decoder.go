@@ -23,7 +23,9 @@ func (d *decoder) setArray(rv reflect.Value, values []interface{}) error {
 		case []interface{}:
 			n := reflect.New(indirect.Type().Elem())
 			indirect.Set(reflect.Append(indirect, reflect.Indirect(n)))
-			d.setArray(indirect.Index(k).Addr(), decodedValue)
+      if err := d.setArray(indirect.Index(k).Addr(), decodedValue); err != nil {
+        return err
+      }
 		}
 	}
 	return nil
@@ -55,9 +57,13 @@ func (d *decoder) setStruct(rv reflect.Value, values map[string]interface{}) err
 			case map[string]interface{}:
 				n := reflect.New(indirect.FieldByName(field.Name).Type())
 				indirect.FieldByName(field.Name).Set(reflect.Indirect(n))
-				d.setStruct(indirect.FieldByName(field.Name).Addr(), decodedValue)
+        if err := d.setStruct(indirect.FieldByName(field.Name).Addr(), decodedValue); err != nil {
+          return err
+        }
 			case []interface{}:
-				d.setArray(indirect.FieldByName(field.Name).Addr(), decodedValue)
+        if err := d.setArray(indirect.FieldByName(field.Name).Addr(), decodedValue); err != nil {
+          return err
+        }
 			}
 		}
 	}
@@ -86,7 +92,9 @@ func (d *decoder) readString() (string, error) {
 }
 
 func (d *decoder) readInteger() (string, error) {
-	d.reader.ReadByte()
+  if _, err := d.reader.ReadByte(); err != nil {
+    return "", err
+  }
 	value, err := d.reader.readUntil('e')
 	if err != nil {
 		return "", err
@@ -96,7 +104,9 @@ func (d *decoder) readInteger() (string, error) {
 
 func (d *decoder) getValueType() (reflect.Kind, error) {
 	b, err := d.reader.ReadByte()
-	defer d.reader.UnreadByte()
+	defer func() {
+    err = d.reader.UnreadByte()
+  }()
 	if err != nil {
 		return reflect.Invalid, err
 	}
@@ -114,7 +124,9 @@ func (d *decoder) getValueType() (reflect.Kind, error) {
 
 func (d *decoder) readList() ([]interface{}, error) {
 	res := make([]interface{}, 0)
-	d.reader.ReadByte()
+  if _, err := d.reader.ReadByte(); err != nil {
+    return nil, err
+  }
 	var v interface{}
 	for {
 		e, err := d.reader.ReadByte() 
@@ -124,7 +136,9 @@ func (d *decoder) readList() ([]interface{}, error) {
 		if e == 'e' {
 			break
 		}
-		d.reader.UnreadByte() 
+    if err = d.reader.UnreadByte(); err != nil {
+      return nil, err
+    }
 		vt, err := d.getValueType()
 		if err != nil {
 			return res, err
@@ -147,6 +161,9 @@ func (d *decoder) readList() ([]interface{}, error) {
 			}
 		case reflect.Map:
 			v, err = d.readDictionary()
+      if err != nil {
+        return res, err
+      }
 		}
 		res = append(res, v)
 	}
@@ -155,7 +172,9 @@ func (d *decoder) readList() ([]interface{}, error) {
 
 func (d *decoder) readDictionary() (map[string]interface{}, error) {
 	res := make(map[string]interface{})
-	d.reader.ReadByte()
+  if _, err := d.reader.ReadByte(); err != nil {
+    return nil, err
+  }
 	var v interface{}
 	for {
 		s, _ := d.readString()
@@ -193,7 +212,9 @@ func (d *decoder) readDictionary() (map[string]interface{}, error) {
 		if e == 'e' {
 			break
 		}
-		d.reader.UnreadByte() 
+    if err := d.reader.UnreadByte(); err != nil {
+      return nil, err
+    }
 	}
 	return res, nil
 }

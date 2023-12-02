@@ -54,7 +54,9 @@ func (e *encoder) encodeDict(rv reflect.Value) error {
 			e.encodeString(indirect.Field(i).Interface().(string))
 		case reflect.Struct:
 			e.encodeString(indirect.Type().Field(i).Tag.Get("bencode"))
-			e.encodeDict(indirect.Field(i).Addr())
+      if err := e.encodeDict(indirect.Field(i).Addr()); err != nil {
+        return err
+      }
 		case reflect.Slice:
 			e.encodeString(indirect.Type().Field(i).Tag.Get("bencode"))
 			e.encodeList(indirect.Field(i).Addr())
@@ -65,7 +67,9 @@ func (e *encoder) encodeDict(rv reflect.Value) error {
 }
 
 func (e *encoder) marshal(v any) ([]byte, error) {
-	e.encodeDict(reflect.ValueOf(v))
+  if err :=  e.encodeDict(reflect.ValueOf(v)); err != nil {
+    return nil, err
+  }
 	return e.output.Bytes(), nil
 }
 
