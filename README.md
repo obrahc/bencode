@@ -49,7 +49,7 @@ func main() {
 		Profile  Profile `bencode:"profile"`
 	}
 
-	input := []byte("d8:username8:johndoe5:email15:john@example.com7:profiled4:name9:John Doe3:agei30e7:hobbiesl7:guitar6:travel5:cookingeee")
+	input := []byte("d5:email16:john@example.com7:profiled3:agei42e7:hobbiesl6:guitar6:travel7:cookinge4:name4:Johne8:username7:johndoee")
 	var user User
 
 	err := bencode.Decode(input, &user)
