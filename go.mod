@@ -1,3 +1,3 @@
-module github.com/extintor/bencode
+module github.com/obrahc/bencode
 
 go 1.21
