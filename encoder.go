@@ -43,9 +43,9 @@ func (e *encoder) encodeList(rv reflect.Value) {
 
 func (e *encoder) encodeDict(rv reflect.Value) error {
 	e.output.WriteByte('d')
-  e.traverseStruct(rv)
+  err := e.traverseStruct(rv)
 	e.output.WriteByte('e')
-	return nil
+	return err
 }
 
 func (e *encoder) traverseStruct(rv reflect.Value) error {
@@ -62,7 +62,9 @@ func (e *encoder) traverseStruct(rv reflect.Value) error {
 		case reflect.Struct:
       str := indirect.Field(i).Addr()
       if len(key) == 0 {
-        e.traverseStruct(str)
+        if err := e.traverseStruct(str); err != nil {
+          return err
+        }
         continue
       }
       e.encodeString(key)
