@@ -71,3 +71,44 @@ func TestEncodeMockTorrentFile(t *testing.T) {
 		t.Errorf("Struct not properly encoded: wanted %s but have %s", want, have)
 	}
 }
+
+func TestEncodeEmbeddedStruct(t *testing.T) {
+	type base struct {
+    Basefield string `bencode:"base"`
+	}
+  type extended struct {
+    base
+    Extendedfield string `bencode:"extended"`
+  }
+	have, err := Encode(&extended{base{"base"}, "extended"})
+	want := []byte("d4:base4:base8:extended8:extendede")
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(have, want) {
+		t.Errorf("Struct not properly encoded: wanted %s but have %s", want, have)
+	}
+}
+
+func TestEncodeDoubleEmbeddedStruct(t *testing.T) {
+	type base struct {
+    Basefield string `bencode:"base"`
+	}
+  type extended struct {
+    base
+    Extendedfield string `bencode:"extended"`
+  }
+  type doubleExtended struct {
+    extended
+    DoubleExtendedField string `bencode:"doubleExtended"`
+  }
+	have, err := Encode(&doubleExtended{extended{base{"base"}, "extended"}, "doubleExtended"})
+  want := []byte("d4:base4:base8:extended8:extended14:doubleExtended14:doubleExtendede")
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(have, want) {
+		t.Errorf("Struct not properly encoded: wanted %s but have %s", want, have)
+	}
+}
+

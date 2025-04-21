@@ -1,7 +1,6 @@
 package bencode
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 )
@@ -75,8 +74,50 @@ func TestDecodeMockTorrentFile(t *testing.T) {
 		t.Error(err)
 	}
 	if !reflect.DeepEqual(have, want) {
-		fmt.Println(have.Info)
-		fmt.Println(want.Info)
 		t.Errorf("Struct not properly hidrated: wanted %+v but have %+v", want, have)
+	}
+}
+
+func TestDecodeEmbeddedStruct(t *testing.T) {
+	type base struct {
+    Basefield string `bencode:"base"`
+	}
+  type extended struct {
+    base
+    Extendedfield string `bencode:"extended"`
+  }
+  have := &extended{}
+  want := &extended{base{"base"}, "extended"}
+	input := []byte("d4:base4:base8:extended8:extendede")
+  err := Decode(input, have)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(have, want) {
+		t.Errorf("Struct not properly encoded: wanted %s but have %s", want, have)
+	}
+}
+
+func TestDecodeDoubleEmbeddedStruct(t *testing.T) {
+	type base struct {
+    Basefield string `bencode:"base"`
+	}
+  type extended struct {
+    base
+    Extendedfield string `bencode:"extended"`
+  }
+  type doubleExtended struct {
+    extended
+    DoubleExtendedField string `bencode:"doubleExtended"`
+  }
+  have := &doubleExtended{}
+  want := &doubleExtended{extended{base{"base"}, "extended"}, "doubleExtended"}
+  input := []byte("d4:base4:base14:doubleExtended14:doubleExtended8:extended8:extendede")
+  err := Decode(input, have)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(have, want) {
+		t.Errorf("Struct not properly encoded: wanted %s but have %s", want, have)
 	}
 }

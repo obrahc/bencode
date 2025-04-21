@@ -175,6 +175,7 @@ func (d *decoder) readDictionary() (map[string]interface{}, error) {
   if _, err := d.reader.ReadByte(); err != nil {
     return nil, err
   }
+
 	var v interface{}
 	for {
 		s, _ := d.readString()
@@ -201,6 +202,7 @@ func (d *decoder) readDictionary() (map[string]interface{}, error) {
 		case reflect.Map:
 			v, err = d.readDictionary()
 		}
+
 		res[s] = v
 		if err != nil {
 			return res, err
@@ -238,8 +240,15 @@ func getStructFields(t reflect.Type) map[string]reflect.StructField {
 	r := make(map[string]reflect.StructField)
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-		r[string(f.Tag.Get("bencode"))] = f
-	}
+    tag := string(f.Tag.Get("bencode"))
+    if len(tag) == 0 {
+      for et, ev := range getStructFields(f.Type) {
+        r[et] = ev
+      }
+      continue
+    }
+		r[tag] = f
+  }
 	return r
 }
 

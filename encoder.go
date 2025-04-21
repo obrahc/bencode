@@ -43,26 +43,37 @@ func (e *encoder) encodeList(rv reflect.Value) {
 
 func (e *encoder) encodeDict(rv reflect.Value) error {
 	e.output.WriteByte('d')
+  e.traverseStruct(rv)
+	e.output.WriteByte('e')
+	return nil
+}
+
+func (e *encoder) traverseStruct(rv reflect.Value) error {
 	indirect := reflect.Indirect(rv)
 	for i := 0; i < indirect.NumField(); i++ {
+    key := indirect.Type().Field(i).Tag.Get("bencode")
 		switch indirect.Type().Field(i).Type.Kind() {
 		case reflect.Uint64:
-			e.encodeString(indirect.Type().Field(i).Tag.Get("bencode"))
+			e.encodeString(key)
 			e.encodeUint(indirect.Field(i).Interface().(uint64))
 		case reflect.String:
-			e.encodeString(indirect.Type().Field(i).Tag.Get("bencode"))
+			e.encodeString(key)
 			e.encodeString(indirect.Field(i).Interface().(string))
 		case reflect.Struct:
-			e.encodeString(indirect.Type().Field(i).Tag.Get("bencode"))
-      if err := e.encodeDict(indirect.Field(i).Addr()); err != nil {
+      str := indirect.Field(i).Addr()
+      if len(key) == 0 {
+        e.traverseStruct(str)
+        continue
+      }
+      e.encodeString(key)
+      if err := e.encodeDict(str); err != nil {
         return err
       }
 		case reflect.Slice:
-			e.encodeString(indirect.Type().Field(i).Tag.Get("bencode"))
+			e.encodeString(key)
 			e.encodeList(indirect.Field(i).Addr())
 		}
 	}
-	e.output.WriteByte('e')
 	return nil
 }
 
